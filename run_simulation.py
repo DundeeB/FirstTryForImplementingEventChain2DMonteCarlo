@@ -1,4 +1,4 @@
-import os
+import os, random, numpy as np
 import metric,snapshot
 
 output_dir = "event_disks_box_movie/"
@@ -10,27 +10,37 @@ colors = ['r', 'b', 'g', 'orange']
 if not os.path.exists(output_dir): os.makedirs(output_dir)
 
 pos = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]
-vel = [[0.21, 0.12], [0.71, 0.18], [-0.23, -0.79], [0.78, 0.1177]]
-singles = [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1), (3, 0), (3, 1)]
-pairs = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
 sigma = 0.15
-t = 0.0
-n_steps = 1000
-save_pic_once_in = 100
-next_event, next_event_arg = metric.compute_next_event(pos, vel,sigma,singles,pairs)
-snapshot.snapshot(t, pos, vel, colors,sigma,output_dir+'000.png')
+total_step = 0.4
+edge = 1
+n_steps = 10
+save_pic_once_in = 1
+snapshot.snapshot(0, pos, 0, 0, colors,sigma,output_dir+'000.png')
+#snapshot(n, pos, vel, sphere_ind, colors,sigma,output_pwd, arrow_scale=.2)
 for step in range(n_steps):
-    next_t = t + next_event
-    while t + next_event <= next_t:
-        t += next_event
-        for k, l in singles: pos[k][l] += vel[k][l] * next_event
-        metric.compute_new_velocities(pos, vel, next_event_arg,singles,pairs)
-        next_event, next_event_arg = metric.compute_next_event(pos, vel,sigma,singles,pairs)
-    remain_t = next_t - t
-    for k, l in singles: pos[k][l] += vel[k][l] * remain_t
-    t += remain_t
-    next_event -= remain_t
+    if step%2 == 0:
+        v_hat = np.array([0, 1])
+    else:
+        v_hat = np.array([1, 0])
+    sphere_ind = random.randint(0, len(pos))
+
     if step%save_pic_once_in==0:
-        snapshot.snapshot(t, pos, vel, colors,sigma,output_dir+str(step)+'.png')
-        print('time',t)
-snapshot.save_video(image_folder,video_name)
+        snapshot.snapshot(step, pos, v_hat, sphere_ind, \
+                          colors,sigma,output_dir+str(step)+'.png')
+        print('step',step)
+
+    step_left = total_step
+    while step_left > 0:
+        current_step_size, step_type, sphere_or_wall_ind = \
+            metric.step_size(pos, sphere_ind, sigma, v_hat, total_step, edge)
+        pos[sphere_ind] += current_step_size*v_hat
+        if step_type == "wall":
+            # define normal vector to the i'th plane, where i=abs(sphere_or_wall_ind)
+            # as it doesn't matter the sign of n
+            n_hat = [0 for x in pos]
+            n_hat[np.abs(sphere_or_wall_ind)] = 1
+            v_hat = v_hat - 2*np.dot(v_hat,n_hat)*n_hat
+        if step_type == "pair_collision":
+            sphere_ind = sphere_or_wall_ind
+        step_left -= current_step_size
+snapshot.save_video(image_folder, video_name)
