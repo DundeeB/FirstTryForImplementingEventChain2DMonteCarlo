@@ -1,27 +1,55 @@
 import math
 import numpy as np
 
-def wall_time(pos_a, vel_a, sigma):
-    if vel_a > 0.0:
-        del_t = (1.0 - sigma - pos_a) / vel_a
-    elif vel_a < 0.0:
-        del_t = (pos_a - sigma) / abs(vel_a)
-    else:
-        del_t = float('inf')
-    return del_t
+def wall_dist(pos, v_hat,l, sigma,edge):
+    """
+    :param pos: position vector of the particle
+    :param v_hat: direction of next step (norm 1)
+    :param l: size of next step
+    :param sigma: radius of the sphere/disk
+    :param edge: wall location, assuming the walls are of square/cube at
+           locations {(0,0,...),(0,edge,...),(edge,edge,...),(edge,0,...),...}
+    :return: distance from the closest wall
+    """
+    edge = edge-sigma #Take care of the sphere radius and forget about it from now on
+    v_hat = np.array(v_hat)/np.linalg.norm(v_hat)
+    min_dist_to_wall = float('inf')
+    for i in range(len(pos)):
+        n_hat=[0 for x in pos]
+        n_hat[i]=1 #define normal vector to the i'th plane
+        print('n_hat='+str(n_hat))
+        vn = np.dot(v_hat,n_hat)
+        n_dot_p = np.dot(n_hat, pos)
+        if not vn ==0:
+            dist_to_wall_down = -n_dot_p / vn
+            print(dist_to_wall_down)
+            if dist_to_wall_down < 0 : dist_to_wall_down = float('inf')
+            dist_to_wall_up = (edge - n_dot_p) / vn
+            print(dist_to_wall_up)
+            if dist_to_wall_up < 0: dist_to_wall_up = float('inf')
+            min_dist_to_wall = min(min_dist_to_wall,dist_to_wall_down,dist_to_wall_up)
+    if min_dist_to_wall > l: min_dist_to_wall = float('inf')
+    return min_dist_to_wall
 
-def pair_time(pos_a, vel_a, pos_b, vel_b, sigma):
-    del_x = [pos_b[0] - pos_a[0], pos_b[1] - pos_a[1]]
-    del_x_sq = np.linalg.norm(del_x)
-    del_v = [vel_b[0] - vel_a[0], vel_b[1] - vel_a[1]]
-    del_v_sq = np.linalg.norm(del_v)
-    scal = np.dot(del_v,del_x)
-    u_psilon = scal ** 2 - del_v_sq*(del_x_sq - 4.0*sigma**2)
-    if u_psilon> 0.0 and scal < 0.0:
-        del_t = - (scal + math.sqrt(u_psilon)) / del_v_sq
-    else:
-        del_t = float('inf')
-    return del_t
+
+def pair_dist(pos_a, pos_b, l,v_hat, sigma):
+    """
+    :param pos_a: position of the particle which is about to make the step
+    :param pos_b: position of some other particle
+    :param l: size of the step
+    :param v_hat: direction of the step
+    :param sigma: radius of the sphere
+    :return:    the distance particle a needs to travel in order to meet particle b.
+                If they don't meet return inf.
+    """
+    dx = np.array(pos_b)-np.array(pos_a)
+    dx_dot_v = np.dot(dx,v_hat)
+    discriminant = dx_dot_v**2+4*sigma**2-np.linalg.norm(dx)**2
+    if discriminant > 0:
+        dist= dx_dot_v - np.sqrt(discriminant)
+        if dist < l and dist > 0:
+            return dist
+    return float('inf')
 
 def compute_next_event(pos, vel,sigma,singles,pairs):
     wall_times = [wall_time(pos[k][l], vel[k][l], sigma) for k, l in singles]
