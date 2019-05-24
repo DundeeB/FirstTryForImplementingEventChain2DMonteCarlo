@@ -8,14 +8,14 @@ def snapshot(n, pos, vel, sphere_ind, colors,sigma,output_pwd, arrow_scale=.2):
     pylab.cla()
     pylab.axis([0, 1, 0, 1])
     pylab.setp(pylab.gca(), xticks=[0, 1], yticks=[0, 1])
-    for (x, y), c in zip(pos, vel, colors):
+    for (x, y), c in zip(pos, colors):
         circle = pylab.Circle((x, y), radius=sigma, fc=c)
         pylab.gca().add_patch(circle)
     (dx, dy) = vel
     dx *= arrow_scale
     dy *= arrow_scale
-    pylab.arrow(pos[sphere_ind][0], pos[sphere_ind][1], dx, dy, fc="k", ec="k", head_width=0.05, head_length=0.05 )
-    pylab.text(.5, 1.03, 'N = %.2f' % n, ha='center')
+    pylab.arrow(pos[sphere_ind][0], pos[sphere_ind][1], dx, dy, fc="k", ec="k", head_width=0.05, head_length=0.05)
+    pylab.text(.5, 1.03, 'N = ' + str(n), ha='center')
     pylab.savefig(output_pwd)
 
 def save_video(image_folder,video_name):
